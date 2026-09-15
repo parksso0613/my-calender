@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나의 캘린더 📅</title>
+    <style>
+        :root {
+            --bg-image: none;
+            --outer-bg-color: #eef2f7;
+            --calendar-bg-color: rgba(255, 255, 255, 0.95);
+            --calendar-text-color: #2c3e50;
+            --primary-color: #4a90e2;
+            --primary-hover: #357abd;
+            --holiday-color: #e74c3c;
+            --saturday-color: #e74c3c; /* 주말 빨간색 설정 */
+            --border-radius: 16px;
+            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--outer-bg-color);
+            background-image: var(--bg-image);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: var(--calendar-text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 10px;
+            transition: background 0.3s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        /* Top Toolbar Controls */
+        .toolbar {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border-radius: var(--border-radius);
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: #4a5568;
+            border: 1.5px solid #cbd5e0;
+        }
+
+        .btn-outline:hover {
+            background-color: #f7fafc;
+            color: #2d3748;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+        }
+
+        /* Calendar Card Container */
+        .calendar-card {
+            background-color: var(--calendar-bg-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            transition: background-color 0.3s ease;
+        }
+
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .month-year-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-btn-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .nav-btn {
+            background-color: #edf2f7;
+            color: #2d3748;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background-color: #e2e8f0;
+            color: #1a202c;
+        }
+
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .weekday-header {
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 10px 0;
+            color: #4a5568;
+            border-bottom: 2px solid #edf2f7;
+        }
+
+        .weekday-header.sun, .weekday-header.sat {
+            color: var(--holiday-color);
+        }
+
+        .day-cell {
+            min-height: 100px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .day-cell:hover {
+            background-color: #ffffff;
+            border-color: #cbd5e0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .day-cell.other-month {
+            opacity: 0.35;
+            background-color: rgba(247, 250, 252, 0.4);
+        }
+
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .day-number {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #2d3748;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        /* 주말 및 공휴일 빨간 글씨 */
+        .day-cell.is-sunday .day-number,
+        .day-cell.is-saturday .day-number,
+        .day-cell.is-holiday .day-number {
+            color: var(--holiday-color) !important;
+        }
+
+        .holiday-label {
+            font-size: 0.68rem;
+            color: var(--holiday-color);
+            font-weight: 700;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            max-width: 60px;
+        }
+
+        .day-cell.is-today {
+            border: 2px solid var(--primary-color);
+            background-color: rgba(235, 248, 255, 0.8);
+        }
+
+        .day-cell.is-today .day-number {
+            background-color: var(--primary-color);
+            color: white !important;
+        }
+
+        /* Schedule Item Highlight Style */
+        .event-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 2px;
+            overflow-y: auto;
+            max-height: 70px;
+        }
+
+        .event-item {
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: transform 0.1s ease;
+            cursor: pointer;
+        }
+
+        .event-item:hover {
+            transform: scale(1.02);
+            filter: brightness(0.95);
+        }
+
+        /* Modal Window */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: #ffffff;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 440px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            transform: translateY(20px);
+            transition: transform 0.25s ease;
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #1a202c;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            color: #a0aec0;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover {
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #4a5568;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+        }
+
+        .color-presets {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .color-preset-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 0 1px #cbd5e0;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .color-preset-btn:hover {
+            transform: scale(1.15);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        /* Responsive Mobile Layout */
+        @media (max-width: 640px) {
+            .calendar-card {
+                padding: 14px;
+            }
+            .day-cell {
+                min-height: 75px;
+                padding: 4px;
+            }
+            .month-year-title {
+                font-size: 1.35rem;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .toolbar-group {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Top Customization & Action Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button class="btn" onclick="openAddEventModal()">➕ 일정 추가</button>
+                <button class="btn btn-outline" onclick="goToToday()">오늘로 이동</button>
+            </div>
+
+            <div class="toolbar-group">
+                <!-- Outer Background File Input -->
+                <label class="btn btn-outline" style="cursor: pointer;">
+                    🖼️ 겉 배경 사진
+                    <input type="file" id="bg-file-input" accept="image/*" style="display: none;" onchange="handleBgImageUpload(event)">
+                </label>
+                <button class="btn btn-outline" onclick="resetBgImage()" title="배경 이미지 초기화">🔄 사진 제거</button>
+
+                <!-- Calendar Card Background Color Picker -->
+                <div class="color-picker-wrapper" title="달력 상자 배경색 변경">
+                    <span>🎨 달력 색:</span>
+                    <input type="color" id="calendar-color-picker" value="#ffffff" onchange="changeCalendarBgColor(this.value)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Calendar Card -->
+        <div class="calendar-card" id="calendar-card">
+            <!-- Calendar Navigation Header -->
+            <div class="calendar-header">
+                <div class="month-year-title" id="month-year-display">
+                    2026년 9월
+                </div>
+                <div class="nav-btn-group">
+                    <button class="nav-btn" onclick="changeMonth(-1)" title="이전 달">&lt;</button>
+                    <button class="nav-btn" onclick="changeMonth(1)" title="다음 달">&gt;</button>
+                </div>
+            </div>
+
+            <!-- Calendar Grid Table -->
+            <div class="calendar-grid" id="calendar-grid">
+                <!-- Weekday Headers -->
+                <div class="weekday-header sun">일</div>
+                <div class="weekday-header">월</div>
+                <div class="weekday-header">화</div>
+                <div class="weekday-header">수</div>
+                <div class="weekday-header">목</div>
+                <div class="weekday-header">금</div>
+                <div class="weekday-header sat">토</div>
+
+                <!-- Days will be dynamically rendered via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / Edit Schedule Modal -->
+    <div class="modal-overlay" id="event-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">새 일정 추가</h3>
+                <button class="close-btn" onclick="closeModal('event-modal')">&times;</button>
+            </div>
+            <form id="event-form" onsubmit="saveEvent(event)">
+                <input type="hidden" id="event-id">
+                
+                <div class="form-group">
+                    <label class="form-label" for="event-date">날짜</label>
+                    <input type="date" id="event-date" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="event-title">일정 내용</label>
+                    <input type="text" id="event-title" class="form-control" placeholder="예: 팀 회의, 친구 약속" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">하이라이트 배경색 & 글씨색</label>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="color" id="event-bg-color" value="#fef08a" style="width:36px; height:36px;">
+                        <span style="font-size:0.85rem; color:#64748b;">원하는 강조색 선택</span>
+                    </div>
+                    <!-- Quick Palette Presets -->
+                    <div class="color-presets">
+                        <div class="color-preset-btn" style="background:#fef08a;" onclick="setHighlightPreset('#fef08a')" title="노랑 형광펜"></div>
+                        <div class="color-preset-btn" style="background:#bbf7d0;" onclick="setHighlightPreset('#bbf7d0')" title="초록 형광펜"></div>
+                        <div class="color-preset-btn" style="background:#bfdbfe;" onclick="setHighlightPreset('#bfdbfe')" title="파랑 형광펜"></div>
+                        <div class="color-preset-btn" style="background:#fbcfe8;" onclick="setHighlightPreset('#fbcfe8')" title="분홍 형광펜"></div>
+                        <div class="color-preset-btn" style="background:#ddd6fe;" onclick="setHighlightPreset('#ddd6fe')" title="보라 형광펜"></div>
+                        <div class="color-preset-btn" style="background:#fed7aa;" onclick="setHighlightPreset('#fed7aa')" title="주황 형광펜"></div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('event-modal')">취소</button>
+                    <button type="submit" class="btn">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View / Delete Event Detail Modal -->
+    <div class="modal-overlay" id="view-event-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">일정 상세정보</h3>
+                <button class="close-btn" onclick="closeModal('view-event-modal')">&times;</button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <p style="font-size: 0.9rem; color: #718096; margin-bottom: 6px;" id="view-event-date">2026년 9월 15일</p>
+                <div id="view-event-badge" style="display: inline-block; padding: 8px 14px; border-radius: 8px; font-size: 1.1rem; font-weight: 800; margin-top: 4px;">
+                    일정 내용
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" style="color:#e53e3e; border-color:#feb2b2;" onclick="deleteCurrentEvent()">🗑️ 삭제</button>
+                <button type="button" class="btn" onclick="closeModal('view-event-modal')">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* Korean Fixed National Holidays (Month-Day) */
+        const KOREAN_HOLIDAYS = {
+            '01-01': '신정',
+            '03-01': '삼일절',
+            '05-05': '어린이날',
+            '06-06': '현충일',
+            '08-15': '광복절',
+            '10-03': '개천절',
+            '10-09': '한글날',
+            '12-25': '크리스마스'
+        };
+
+        /* State Variables */
+        let currentDate = new Date(); // Currently viewed year & month
+        let events = []; // Schedule items array
+        let selectedEventId = null; // Event being viewed or edited
+
+        // Initialize on DOM Ready
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSavedSettings();
+            loadSavedEvents();
+            renderCalendar();
+        });
+
+        // Load saved background settings from localStorage
+        function loadSavedSettings() {
+            const savedBgImage = localStorage.getItem('calendar_bg_image');
+            if (savedBgImage) {
+                document.body.style.setProperty('--bg-image', `url(${savedBgImage})`);
+            }
+
+            const savedCalendarBg = localStorage.getItem('calendar_box_color');
+            if (savedCalendarBg) {
+                document.body.style.setProperty('--calendar-bg-color', savedCalendarBg);
+                document.getElementById('calendar-color-picker').value = rgbToHex(savedCalendarBg) || '#ffffff';
+            }
+        }
+
+        // Helper to convert rgb to hex for color picker default
+        function rgbToHex(rgba) {
+            if (rgba.startsWith('#')) return rgba;
+            const parts = rgba.match(/\d+/g);
+            if (!parts || parts.length < 3) return '#ffffff';
+            const r = parseInt(parts[0]).toString(16).padStart(2, '0');
+            const g = parseInt(parts[1]).toString(16).padStart(2, '0');
+            const b = parseInt(parts[2]).toString(16).padStart(2, '0');
+            return `#${r}${g}${b}`;
+        }
+
+        // Load schedule events from localStorage
+        function loadSavedEvents() {
+            const saved = localStorage.getItem('my_calendar_events');
+            if (saved) {
+                try {
+                    events = JSON.parse(saved);
+                } catch (e) {
+                    events = [];
+                }
+            }
+        }
+
+        // Save schedule events to localStorage
+        function saveEventsToStorage() {
+            localStorage.setItem('my_calendar_events', JSON.stringify(events));
+        }
+
+        // Render Calendar Grid
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            // Update Title Header
+            document.getElementById('month-year-display').textContent = `${year}년 ${month + 1}월`;
+
+            const gridContainer = document.getElementById('calendar-grid');
+
+            // Remove existing day cells (keep first 7 weekday headers)
+            const dayCells = gridContainer.querySelectorAll('.day-cell');
+            dayCells.forEach(cell => cell.remove());
+
+            // Get First day of month & Total days in month
+            const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sunday, 6 = Saturday
+            const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+            // Render Previous Month's Trailing Days
+            for (let i = firstDayIndex; i > 0; i--) {
+                const prevDay = prevMonthLastDay - i + 1;
+                const cellDate = new Date(year, month - 1, prevDay);
+                const cell = createDayCell(prevDay, cellDate, true);
+                gridContainer.appendChild(cell);
+            }
+
+            // Render Current Month Days
+            const today = new Date();
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const cellDate = new Date(year, month, day);
+                const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const cell = createDayCell(day, cellDate, false, isToday);
+                gridContainer.appendChild(cell);
+            }
+
+            // Render Next Month's Leading Days to complete grid rows
+            const totalCells = firstDayIndex + totalDaysInMonth;
+            const nextDays = (7 - (totalCells % 7)) % 7;
+            for (let day = 1; day <= nextDays; day++) {
+                const cellDate = new Date(year, month + 1, day);
+                const cell = createDayCell(day, cellDate, true);
+                gridContainer.appendChild(cell);
+            }
+        }
+
+        // Create Day Cell Element
+        function createDayCell(dayNumber, dateObj, isOtherMonth = false, isToday = false) {
+            const cell = document.createElement('div');
+            cell.className = `day-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'is-today' : ''}`;
+
+            const dayOfWeek = dateObj.getDay(); // 0: Sun, 6: Sat
+            const formattedMonthDay = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+            const holidayName = KOREAN_HOLIDAYS[formattedMonthDay];
+
+            if (dayOfWeek === 0) cell.classList.add('is-sunday');
+            if (dayOfWeek === 6) cell.classList.add('is-saturday');
+            if (holidayName) cell.classList.add('is-holiday');
+
+            // Day Header (Number + Holiday Label)
+            const dayHeader = document.createElement('div');
+            dayHeader.className = 'day-header';
+
+            const numSpan = document.createElement('span');
+            numSpan.className = 'day-number';
+            numSpan.textContent = dayNumber;
+            dayHeader.appendChild(numSpan);
+
+            if (holidayName && !isOtherMonth) {
+                const holSpan = document.createElement('span');
+                holSpan.className = 'holiday-label';
+                holSpan.textContent = holidayName;
+                dayHeader.appendChild(holSpan);
+            }
+
+            cell.appendChild(dayHeader);
+
+            // Date string format for matching events: YYYY-MM-DD
+            const dateStr = formatDateString(dateObj);
+
+            // Render Events list for this day
+            const eventListContainer = document.createElement('div');
+            eventListContainer.className = 'event-list';
+
+            const dayEvents = events.filter(e => e.date === dateStr);
+            dayEvents.forEach(evt => {
+                const evtItem = document.createElement('div');
+                evtItem.className = 'event-item';
+                evtItem.textContent = evt.title;
+                evtItem.style.backgroundColor = evt.bgColor || '#fef08a';
+                
+                // Dark or light text depending on background brightness
+                evtItem.style.color = getContrastingTextColor(evt.bgColor || '#fef08a');
+
+                evtItem.onclick = (e) => {
+                    e.stopPropagation(); // Prevent opening new event modal
+                    openViewEventModal(evt.id);
+                };
+
+                eventListContainer.appendChild(evtItem);
+            });
+
+            cell.appendChild(eventListContainer);
+
+            // Click cell to add event for this date
+            cell.onclick = () => {
+                openAddEventModal(dateStr);
+            };
+
+            return cell;
+        }
+
+        // Month Navigation Functions
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function goToToday() {
+            currentDate = new Date();
+            renderCalendar();
+        }
+
+        // Format Date to YYYY-MM-DD
+        function formatDateString(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Open Add Event Modal
+        function openAddEventModal(presetDateStr = null) {
+            document.getElementById('modal-title').textContent = '새 일정 추가';
+            document.getElementById('event-id').value = '';
+            document.getElementById('event-title').value = '';
+            document.getElementById('event-bg-color').value = '#fef08a';
+
+            const dateInput = document.getElementById('event-date');
+            if (presetDateStr) {
+                dateInput.value = presetDateStr;
+            } else {
+                dateInput.value = formatDateString(new Date());
+            }
+
+            document.getElementById('event-modal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function setHighlightPreset(hexColor) {
+            document.getElementById('event-bg-color').value = hexColor;
+        }
+
+        // Save Event
+        function saveEvent(e) {
+            e.preventDefault();
+            const title = document.getElementById('event-title').value.trim();
+            const date = document.getElementById('event-date').value;
+            const bgColor = document.getElementById('event-bg-color').value;
+
+            if (!title || !date) return;
+
+            const newEvent = {
+                id: Date.now().toString(),
+                title: title,
+                date: date,
+                bgColor: bgColor
+            };
+
+            events.push(newEvent);
+            saveEventsToStorage();
+            renderCalendar();
+            closeModal('event-modal');
+        }
+
+        // Open View Event Modal
+        function openViewEventModal(eventId) {
+            const evt = events.find(e => e.id === eventId);
+            if (!evt) return;
+
+            selectedEventId = eventId;
+            const [y, m, d] = evt.date.split('-');
+            document.getElementById('view-event-date').textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
+
+            const badge = document.getElementById('view-event-badge');
+            badge.textContent = evt.title;
+            badge.style.backgroundColor = evt.bgColor || '#fef08a';
+            badge.style.color = getContrastingTextColor(evt.bgColor || '#fef08a');
+
+            document.getElementById('view-event-modal').classList.add('active');
+        }
+
+        // Delete Event
+        function deleteCurrentEvent() {
+            if (!selectedEventId) return;
+            events = events.filter(e => e.id !== selectedEventId);
+            saveEventsToStorage();
+            renderCalendar();
+            closeModal('view-event-modal');
+            selectedEventId = null;
+        }
+
+        // Outer Background Image File Upload
+        function handleBgImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const dataUrl = e.target.result;
+                document.body.style.setProperty('--bg-image', `url(${dataUrl})`);
+                localStorage.setItem('calendar_bg_image', dataUrl);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Reset Background Image
+        function resetBgImage() {
+            document.body.style.setProperty('--bg-image', 'none');
+            localStorage.removeItem('calendar_bg_image');
+            document.getElementById('bg-file-input').value = '';
+        }
+
+        // Change Calendar Card Background Color
+        function changeCalendarBgColor(hexColor) {
+            // Convert Hex to RGBA with opacity 0.95 for soft glass look
+            const rgbaColor = hexToRgba(hexColor, 0.95);
+            document.body.style.setProperty('--calendar-bg-color', rgbaColor);
+            localStorage.setItem('calendar_box_color', rgbaColor);
+        }
+
+        // Helper function for Hex to RGBA
+        function hexToRgba(hex, alpha = 1) {
+            let c = hex.replace('#', '');
+            if (c.length === 3) c = c.split('').map(x => x + x).join('');
+            const num = parseInt(c, 16);
+            const r = (num >> 16) & 255;
+            const g = (num >> 8) & 255;
+            const b = num & 255;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // Determine contrasting text color (black/white) for custom highlight backgrounds
+        function getContrastingTextColor(hexColor) {
+            let c = hexColor.replace('#', '');
+            if (c.length === 3) c = c.split('').map(x => x + x).join('');
+            const num = parseInt(c, 16);
+            const r = (num >> 16) & 255;
+            const g = (num >> 8) & 255;
+            const b = num & 255;
+            // YIQ contrast formula
+            const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+            return yiq >= 128 ? '#1e293b' : '#ffffff';
+        }
+    </script>
+</body>
+</html>

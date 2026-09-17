@@ -7,6 +7,7 @@
     <style>
         :root {
             --bg-image: none;
+            --calendar-bg-image: none;
             --outer-bg-color: #eef2f7;
             --calendar-bg-color: rgba(255, 255, 255, 0.95);
             --calendar-text-color: #2c3e50;
@@ -131,11 +132,14 @@
         /* Calendar Card Container */
         .calendar-card {
             background-color: var(--calendar-bg-color);
+            background-image: var(--calendar-bg-image);
+            background-size: cover;
+            background-position: center;
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
             padding: 24px;
             backdrop-filter: blur(10px);
-            transition: background-color 0.3s ease;
+            transition: background 0.3s ease;
         }
 
         .calendar-header {
@@ -451,17 +455,26 @@
 
             <div class="toolbar-group">
                 <!-- Outer Background File Input -->
-                <label class="btn btn-outline" style="cursor: pointer;">
-                    🖼️ 겉 배경 사진
+                <label class="btn btn-outline" style="cursor: pointer;" title="전체 바깥 배경 사진 설정">
+                    🖼️ 겉 배경
                     <input type="file" id="bg-file-input" accept="image/*" style="display: none;" onchange="handleBgImageUpload(event)">
                 </label>
-                <button class="btn btn-outline" onclick="resetBgImage()" title="배경 이미지 초기화">🔄 사진 제거</button>
+
+                <!-- Calendar Card Background File Input -->
+                <label class="btn btn-outline" style="cursor: pointer;" title="달력 상자 안쪽 배경 사진 설정">
+                    🖼️ 달력 배경
+                    <input type="file" id="calendar-bg-file-input" accept="image/*" style="display: none;" onchange="handleCalendarBgImageUpload(event)">
+                </label>
+                <button class="btn btn-outline" onclick="resetCalendarBgImage()" title="달력 배경 사진 제거">🔄 달력사진 제거</button>
 
                 <!-- Calendar Card Background Color Picker -->
                 <div class="color-picker-wrapper" title="달력 상자 배경색 변경">
                     <span>🎨 달력 색:</span>
                     <input type="color" id="calendar-color-picker" value="#ffffff" onchange="changeCalendarBgColor(this.value)">
                 </div>
+
+                <!-- Emergency Data Reset Button -->
+                <button class="btn btn-outline" style="color: #e53e3e; border-color: #fca5a5;" onclick="clearAllData()" title="오류 발생 시 데이터 초기화">⚠️ 전체 초기화</button>
             </div>
         </div>
 
@@ -577,36 +590,165 @@
         let events = []; // Schedule items array
         let selectedEventId = null; // Event being viewed or edited
 
-        // Initialize on DOM Ready
+        // Safe Initialization on DOM Ready
         window.addEventListener('DOMContentLoaded', () => {
-            loadSavedSettings();
-            loadSavedEvents();
-            renderCalendar();
-        });
-
-        // Load saved background settings from localStorage
-        function loadSavedSettings() {
-            const savedBgImage = localStorage.getItem('calendar_bg_image');
-            if (savedBgImage) {
-                document.body.style.setProperty('--bg-image', `url(${savedBgImage})`);
+            try {
+                loadSavedSettings();
+            } catch (err) {
+                console.error("배경 설정 로드 오류:", err);
             }
 
-            const savedCalendarBg = localStorage.getItem('calendar_box_color');
-            if (savedCalendarBg) {
-                document.body.style.setProperty('--calendar-bg-color', savedCalendarBg);
-                document.getElementById('calendar-color-picker').value = rgbToHex(savedCalendarBg) || '#ffffff';
+            try {
+                loadSavedEvents();
+            } catch (err) {
+                console.error("일정 로드 오류:", err);
+                events = [];
+            }
+
+            // Always render calendar even if stored settings fail
+            try {
+                renderCalendar();
+            } catch (err) {
+                console.error("달력 렌더링 오류:", err);
+                alert("달력을 불러오는 중 오류가 발생했습니다. 데이터를 초기화합니다.");
+                clearAllData();
+            }
+        });
+
+        // Load saved background settings safely from localStorage
+        function loadSavedSettings() {
+            try {
+                const savedBgImage = localStorage.getItem('calendar_bg_image');
+                if (savedBgImage) {
+                    document.body.style.setProperty('--bg-image', `url(${savedBgImage})`);
+                }
+
+                const savedCalendarBgImage = localStorage.getItem('calendar_card_bg_image');
+                if (savedCalendarBgImage) {
+                    document.body.style.setProperty('--calendar-bg-image', `url(${savedCalendarBgImage})`);
+                }
+
+                const savedCalendarBg = localStorage.getItem('calendar_box_color');
+                if (savedCalendarBg) {
+                    document.body.style.setProperty('--calendar-bg-color', savedCalendarBg);
+                    const hexVal = rgbToHex(savedCalendarBg);
+                    if (/^#[0-9A-F]{6}$/i.test(hexVal)) {
+                        const picker = document.getElementById('calendar-color-picker');
+                        if (picker) picker.value = hexVal;
+                    }
+                }
+            } catch (e) {
+                console.warn("저장된 배경 설정을 불러올 수 없습니다.", e);
             }
         }
 
-        // Helper to convert rgb to hex for color picker default
+        // Helper to convert rgb/rgba to hex safely
         function rgbToHex(rgba) {
-            if (rgba.startsWith('#')) return rgba;
+            if (!rgba) return '#ffffff';
+            if (rgba.startsWith('#')) {
+                return rgba.length === 7 ? rgba : '#ffffff';
+            }
             const parts = rgba.match(/\d+/g);
             if (!parts || parts.length < 3) return '#ffffff';
-            const r = parseInt(parts[0]).toString(16).padStart(2, '0');
-            const g = parseInt(parts[1]).toString(16).padStart(2, '0');
-            const b = parseInt(parts[2]).toString(16).padStart(2, '0');
+            const r = Math.min(255, parseInt(parts[0])).toString(16).padStart(2, '0');
+            const g = Math.min(255, parseInt(parts[1])).toString(16).padStart(2, '0');
+            const b = Math.min(255, parseInt(parts[2])).toString(16).padStart(2, '0');
             return `#${r}${g}${b}`;
+        }
+
+        // Load schedule events from localStorage safely
+        function loadSavedEvents() {
+            const saved = localStorage.getItem('my_calendar_events');
+            if (saved) {
+                try {
+                    events = JSON.parse(saved);
+                    if (!Array.isArray(events)) events = [];
+                } catch (e) {
+                    events = [];
+                }
+            }
+        }
+
+        // Save schedule events to localStorage safely
+        function saveEventsToStorage() {
+            try {
+                localStorage.setItem('my_calendar_events', JSON.stringify(events));
+            } catch (e) {
+                alert("저장 용량이 부족합니다.");
+            }
+        }
+        // Outer Background Image File Upload with Compression & Safe Storage
+        function handleBgImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Limit max size to 3MB before processing
+            if (file.size > 3 * 1024 * 1024) {
+                alert("이미지 용량이 커서 저장할 수 없습니다. 3MB 이하의 이미지를 선택해 주세요.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const dataUrl = e.target.result;
+                try {
+                    localStorage.setItem('calendar_bg_image', dataUrl);
+                    document.body.style.setProperty('--bg-image', `url(${dataUrl})`);
+                } catch (err) {
+                    alert("이미지 용량이 커서 브라우저 저장소에 보관할 수 없습니다.");
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Calendar Card Background Image File Upload
+        function handleCalendarBgImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 3 * 1024 * 1024) {
+                alert("이미지 용량이 커서 저장할 수 없습니다. 3MB 이하의 이미지를 선택해 주세요.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const dataUrl = e.target.result;
+                try {
+                    localStorage.setItem('calendar_card_bg_image', dataUrl);
+                    document.body.style.setProperty('--calendar-bg-image', `url(${dataUrl})`);
+                } catch (err) {
+                    alert("이미지 용량이 커서 브라우저 저장소에 보관할 수 없습니다.");
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Reset Calendar Card Background Image
+        function resetCalendarBgImage() {
+            document.body.style.setProperty('--calendar-bg-image', 'none');
+            localStorage.removeItem('calendar_card_bg_image');
+            const input = document.getElementById('calendar-bg-file-input');
+            if (input) input.value = '';
+        }
+
+        // Emergency Clear All Stored Data
+        function clearAllData() {
+            if (confirm("모든 일정 및 배경 설정을 초기화하시겠습니까?")) {
+                localStorage.removeItem('calendar_bg_image');
+                localStorage.removeItem('calendar_card_bg_image');
+                localStorage.removeItem('calendar_box_color');
+                localStorage.removeItem('my_calendar_events');
+                location.reload();
+            }
+        }
+
+        // Reset Background Image
+        function resetBgImage() {
+            document.body.style.setProperty('--bg-image', 'none');
+            localStorage.removeItem('calendar_bg_image');
+            const input = document.getElementById('bg-file-input');
+            if (input) input.value = '';
         }
 
         // Load schedule events from localStorage

@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 # 페이지 기본 설정
 st.set_page_config(
-    page_title="나의 캘린더 📅",
+    page_title="𝐂𝐚𝐥𝐞𝐧𝐝𝐞𝐫",
     page_icon="📅",
     layout="wide"
 )
